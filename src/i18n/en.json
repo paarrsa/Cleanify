@@ -42,7 +42,8 @@
   "channels": {
     "title": "Your channels:",
     "empty": "You haven't linked any channels yet. Forward a message from a channel to get started.",
-    "current": "Currently managing: {channel}"
+    "current": "Currently managing: {channel}",
+    "autoCleanupSuffix": " — auto-cleanup: every {days}d"
   },
   "broadcast": {
     "unauthorized": "You're not authorized to use this command.",
@@ -50,12 +51,17 @@
     "confirmPrompt": "Send this to {count} users?",
     "confirmYes": "✅ Send",
     "confirmNo": "❌ Cancel",
+    "cancelled": "Broadcast cancelled.",
     "sending": "Sending broadcast to {count} users...",
     "done": "Broadcast sent to {count} users ({failed} failed)."
   },
   "scheduledCleanup": {
+    "setupCancelled": "Auto-cleanup setup cancelled.",
+    "chooseChannel": "Which channel should auto-cleanup apply to?",
+    "daysPrompt": "After how many days should messages be automatically deleted? Send a whole number (e.g. 30).",
+    "invalidDays": "Please send a whole number of days, greater than 0 (e.g. 30).",
     "enabled": "Auto-cleanup enabled: messages older than {days} days will be deleted automatically.",
-    "disabled": "Auto-cleanup disabled.",
+    "disabled": "Auto-cleanup disabled for all your channels.",
     "limitationNotice": "Note: auto-cleanup can only apply to messages posted after I was added as an admin — I have no way to see the age of messages posted before that."
   }
 }

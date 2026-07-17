@@ -57,6 +57,23 @@ export interface DeleteRangeResult {
 }
 
 /**
+ * Deletes an arbitrary (not necessarily contiguous) list of message ids from a chat, chunked to
+ * Telegram's bulk-delete limit (100 ids per call), retrying any chunk that hits flood control.
+ */
+export async function deleteMessagesByIds(
+  api: Pick<Api, 'deleteMessages'>,
+  chatId: number,
+  messageIds: number[],
+  { chunkSize = 100 }: DeleteRangeOptions = {},
+): Promise<DeleteRangeResult> {
+  const chunks = chunk(messageIds, chunkSize);
+  for (const batch of chunks) {
+    await withFloodWaitRetry(() => api.deleteMessages(chatId, batch));
+  }
+  return { attemptedCount: messageIds.length, chunkCount: chunks.length };
+}
+
+/**
  * Deletes every message id in [firstMessageId, lastMessageId] from a chat, chunked to Telegram's
  * bulk-delete limit (100 ids per call), retrying any chunk that hits flood control.
  */
@@ -65,12 +82,7 @@ export async function deleteMessageRange(
   chatId: number,
   firstMessageId: number,
   lastMessageId: number,
-  { chunkSize = 100 }: DeleteRangeOptions = {},
+  options: DeleteRangeOptions = {},
 ): Promise<DeleteRangeResult> {
-  const ids = buildIdRange(firstMessageId, lastMessageId);
-  const chunks = chunk(ids, chunkSize);
-  for (const batch of chunks) {
-    await withFloodWaitRetry(() => api.deleteMessages(chatId, batch));
-  }
-  return { attemptedCount: ids.length, chunkCount: chunks.length };
+  return deleteMessagesByIds(api, chatId, buildIdRange(firstMessageId, lastMessageId), options);
 }

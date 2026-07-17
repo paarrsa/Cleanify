@@ -26,3 +26,8 @@ export async function getUser(db: Database, id: number) {
 export async function setUserLanguage(db: Database, id: number, language: Locale) {
   await db.update(users).set({ language, updatedAt: new Date() }).where(eq(users.id, id));
 }
+
+export async function getAllUserIds(db: Database): Promise<number[]> {
+  const rows = await db.select({ id: users.id }).from(users);
+  return rows.map((row) => row.id);
+}

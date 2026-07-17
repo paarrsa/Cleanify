@@ -17,7 +17,9 @@ manually deleting hundreds of messages one at a time.
 - **Cleanup history** — an audit log of past cleanups (message ranges and timestamps only, never
   message content).
 - **Scheduled auto-cleanup** — optionally auto-delete messages older than N days, going forward
-  from whenever Cleanify starts watching a channel.
+  from whenever Cleanify starts watching a channel (`/autocleanup`, `/autocleanup off`).
+- **Admin broadcast** — `/broadcast`, restricted to `ADMIN_USER_IDS` and gated behind an explicit
+  confirmation, replacing the legacy bot's unauthenticated broadcast endpoint.
 - **English and Persian** UI out of the box, with a straightforward path for contributing more
   languages.
 

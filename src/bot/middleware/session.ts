@@ -2,12 +2,22 @@ import { eq } from 'drizzle-orm';
 import { session, type StorageAdapter } from 'grammy';
 
 import type { BotContext } from '@/bot/context.js';
+import {
+  initialAutoCleanupFlowSession,
+  type AutoCleanupFlowSession,
+} from '@/bot/state/autoCleanupFlowState.js';
+import {
+  initialBroadcastFlowSession,
+  type BroadcastFlowSession,
+} from '@/bot/state/broadcastFlowState.js';
 import { initialDeleteFlowSession, type DeleteFlowSession } from '@/bot/state/deleteFlowState.js';
 import type { Database } from '@/db/client.js';
 import { botSessions } from '@/db/schema.js';
 
 export interface SessionData {
   deleteFlow: DeleteFlowSession;
+  broadcast: BroadcastFlowSession;
+  autoCleanup: AutoCleanupFlowSession;
 }
 
 function createNeonSessionStorage(db: Database): StorageAdapter<SessionData> {
@@ -32,7 +42,11 @@ function createNeonSessionStorage(db: Database): StorageAdapter<SessionData> {
  * a Netlify Function instance doesn't persist state between invocations. */
 export function createSessionMiddleware(db: Database) {
   return session<SessionData, BotContext>({
-    initial: (): SessionData => ({ deleteFlow: initialDeleteFlowSession }),
+    initial: (): SessionData => ({
+      deleteFlow: initialDeleteFlowSession,
+      broadcast: initialBroadcastFlowSession,
+      autoCleanup: initialAutoCleanupFlowSession,
+    }),
     storage: createNeonSessionStorage(db),
   });
 }

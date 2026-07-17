@@ -51,3 +51,35 @@ export async function getChannelByTelegramId(db: Database, telegramChatId: numbe
     .limit(1);
   return channel;
 }
+
+export async function setAutoCleanup(
+  db: Database,
+  channelId: number,
+  input: { enabled: boolean; days?: number | null },
+) {
+  await db
+    .update(channels)
+    .set({ autoCleanupEnabled: input.enabled, autoCleanupDays: input.days ?? null })
+    .where(eq(channels.id, channelId));
+}
+
+export async function disableAutoCleanupForUser(db: Database, userId: number) {
+  const rows = await getChannelsForUser(db, userId);
+  for (const row of rows) {
+    await setAutoCleanup(db, row.channel.id, { enabled: false, days: null });
+  }
+}
+
+export async function getChannelsWithAutoCleanupEnabled(db: Database) {
+  return db.select().from(channels).where(eq(channels.autoCleanupEnabled, true));
+}
+
+/** Any member of the channel, preferring the owner — used to attribute system-triggered
+ * (scheduled) actions to a user for audit-log purposes, since there's no human actor to record. */
+export async function getAnyChannelMember(db: Database, channelId: number) {
+  const rows = await db
+    .select()
+    .from(channelMembers)
+    .where(eq(channelMembers.channelId, channelId));
+  return rows.find((row) => row.role === 'owner') ?? rows[0];
+}

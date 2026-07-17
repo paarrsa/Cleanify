@@ -1,7 +1,7 @@
 import { desc, eq, type InferInsertModel } from 'drizzle-orm';
 
 import type { Database } from '@/db/client.js';
-import { auditLog } from '@/db/schema.js';
+import { auditLog, channels } from '@/db/schema.js';
 
 export type NewAuditLogEntry = InferInsertModel<typeof auditLog>;
 
@@ -14,6 +14,20 @@ export async function getRecentAuditLogForUser(db: Database, userId: number, lim
   return db
     .select()
     .from(auditLog)
+    .where(eq(auditLog.actorUserId, userId))
+    .orderBy(desc(auditLog.createdAt))
+    .limit(limit);
+}
+
+export async function getRecentAuditLogWithChannelForUser(
+  db: Database,
+  userId: number,
+  limit = 10,
+) {
+  return db
+    .select({ entry: auditLog, channelTitle: channels.title, channelUsername: channels.username })
+    .from(auditLog)
+    .leftJoin(channels, eq(auditLog.channelId, channels.id))
     .where(eq(auditLog.actorUserId, userId))
     .orderBy(desc(auditLog.createdAt))
     .limit(limit);
