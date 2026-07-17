@@ -15,6 +15,9 @@ export async function upsertUser(db: Database, input: { id: number; username?: s
       set: { username: input.username ?? null, updatedAt: new Date() },
     })
     .returning();
+  if (!user) {
+    throw new Error('Failed to upsert user');
+  }
   return user;
 }
 

@@ -1,6 +1,6 @@
 {
-  "id": "c2c0546b-8704-467d-83e2-08d14dc480c6",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "3e8f9e4a-e32d-417e-a44d-e9e406ddf268",
+  "prevId": "c2c0546b-8704-467d-83e2-08d14dc480c6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -437,8 +437,7 @@
           "name": "language",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "default": "'en'"
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",

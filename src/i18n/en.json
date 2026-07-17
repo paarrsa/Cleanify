@@ -1,6 +1,7 @@
 {
   "start": "Hello, I'm Cleanify! How can I help you?\nIf this is your first time using me, please check out the help section <3",
   "language": {
+    "clearingOldMenu": "Cleanify has been rebuilt from the ground up! Clearing the old menu...",
     "prompt": "Please select a language:"
   },
   "menu": {

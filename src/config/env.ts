@@ -18,6 +18,10 @@ const envSchema = z.object({
     ),
   SENTRY_DSN: z.string().url().optional(),
   HELP_VIDEO_FILE_ID: z.string().optional(),
+  /** Raw JSON of the bot's getMe() response. When set, skips grammY's automatic getMe() call on
+   * cold start — one fewer sequential network round-trip before the bot can handle an update.
+   * Regenerate with: node -e "..." (see README) if the bot's username/name ever changes. */
+  TELEGRAM_BOT_INFO: z.string().optional(),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 });
 

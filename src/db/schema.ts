@@ -29,7 +29,10 @@ export const jobStatus = pgEnum('job_status', [
 export const users = pgTable('users', {
   id: bigint('id', { mode: 'number' }).primaryKey(),
   username: text('username'),
-  language: text('language').notNull().default('en'),
+  /** Null until the user explicitly picks a language via /en, /fa, or the language-select
+   * keyboard — identifyUser middleware treats null as "show the prompt", so this must not have
+   * a default. */
+  language: text('language'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

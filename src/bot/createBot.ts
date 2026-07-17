@@ -1,4 +1,5 @@
 import { Bot, webhookCallback } from 'grammy';
+import type { UserFromGetMe } from 'grammy/types';
 
 import { createChannelsCommand } from '@/bot/commands/channels.js';
 import { helpCommand } from '@/bot/commands/help.js';
@@ -21,7 +22,12 @@ import { t } from '@/i18n/index.js';
 import { logger } from '@/logging/logger.js';
 
 export function createBot(db: Database): Bot<BotContext> {
-  const bot = new Bot<BotContext>(getEnv().TELEGRAM_BOT_TOKEN);
+  const env = getEnv();
+  const bot = new Bot<BotContext>(env.TELEGRAM_BOT_TOKEN, {
+    ...(env.TELEGRAM_BOT_INFO
+      ? { botInfo: JSON.parse(env.TELEGRAM_BOT_INFO) as UserFromGetMe }
+      : {}),
+  });
 
   bot.use(createSessionMiddleware(db));
   bot.use(createIdentifyUserMiddleware(db));
