@@ -1,0 +1,61 @@
+{
+  "start": "Hello, I'm Cleanify! How can I help you?\nIf this is your first time using me, please check out the help section <3",
+  "language": {
+    "prompt": "Please select a language:"
+  },
+  "menu": {
+    "delete": "Delete messages for me!",
+    "help": "Help",
+    "support": "Support",
+    "history": "History",
+    "channels": "My channels",
+    "cancel": "Cancel"
+  },
+  "help": {
+    "caption": "This video shows you how to use the bot!"
+  },
+  "support": "Message @FormerlyGod for support.",
+  "errors": {
+    "channelError": "The message you sent isn't forwarded from a channel. Please follow the help video :)",
+    "differentChannelError": "Those two messages are from different channels :/",
+    "adminError": "First, make me an admin of the channel with permission to delete messages. Then try again!",
+    "deniedError": "You're not an admin of that channel :/",
+    "invalid": "Sorry, I didn't understand that. Please choose from the menu!",
+    "outOfOrder": "The second message needs to be the same as or after the first one."
+  },
+  "deleteFlow": {
+    "firstMessagePrompt": "Please forward the message you want me to start cleaning from:",
+    "secondMessagePrompt": "Now forward the message you want me to stop cleaning at:",
+    "confirmPrompt": "This will delete approximately {count} messages from {channel}. Are you sure?",
+    "confirmYes": "✅ Yes, delete them",
+    "confirmNo": "❌ Cancel",
+    "waiting": "Please wait a moment...",
+    "cleaning": "Cleanify is deleting messages...",
+    "cancelled": "Cancelled. Nothing was deleted.",
+    "done": "Done! I deleted {count} messages. Thanks for using Cleanify!"
+  },
+  "history": {
+    "title": "Your recent cleanups:",
+    "empty": "No cleanups yet.",
+    "entry": "{date} — {channel}: ~{count} messages deleted"
+  },
+  "channels": {
+    "title": "Your channels:",
+    "empty": "You haven't linked any channels yet. Forward a message from a channel to get started.",
+    "current": "Currently managing: {channel}"
+  },
+  "broadcast": {
+    "unauthorized": "You're not authorized to use this command.",
+    "prompt": "Send the message you want to broadcast to all users.",
+    "confirmPrompt": "Send this to {count} users?",
+    "confirmYes": "✅ Send",
+    "confirmNo": "❌ Cancel",
+    "sending": "Sending broadcast to {count} users...",
+    "done": "Broadcast sent to {count} users ({failed} failed)."
+  },
+  "scheduledCleanup": {
+    "enabled": "Auto-cleanup enabled: messages older than {days} days will be deleted automatically.",
+    "disabled": "Auto-cleanup disabled.",
+    "limitationNotice": "Note: auto-cleanup can only apply to messages posted after I was added as an admin — I have no way to see the age of messages posted before that."
+  }
+}

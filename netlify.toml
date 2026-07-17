@@ -1,0 +1,19 @@
+[build]
+  command = "npm run build"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/webhook"
+  to = "/.netlify/functions/telegram-webhook"
+  status = 200
+
+[[redirects]]
+  from = "/admin/broadcast"
+  to = "/.netlify/functions/admin-broadcast"
+  status = 200
+
+[functions."scheduled-cleanup"]
+  schedule = "0 * * * *"
