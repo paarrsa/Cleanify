@@ -16,7 +16,12 @@ const envSchema = z.object({
         .filter(Boolean)
         .map(Number),
     ),
-  SENTRY_DSN: z.string().url().optional(),
+  // An unset var in .env still arrives as "" (not undefined), which .url() would reject on its
+  // own — treat a blank string the same as "not provided".
+  SENTRY_DSN: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().url().optional(),
+  ),
   HELP_VIDEO_FILE_ID: z.string().optional(),
   /** Raw JSON of the bot's getMe() response. When set, skips grammY's automatic getMe() call on
    * cold start — one fewer sequential network round-trip before the bot can handle an update.

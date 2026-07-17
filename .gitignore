@@ -9,3 +9,6 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
+
+# Contains real user data (Telegram ids, usernames) — never commit.
+/temp/
