@@ -14,7 +14,11 @@ import { DEFAULT_LOCALE, isSupportedLocale, t } from '@/i18n/index.js';
  */
 export function createIdentifyUserMiddleware(db: Database) {
   return async (ctx: BotContext, next: NextFunction) => {
-    if (!ctx.from) {
+    // channel_post updates have `from` set to the posting admin when the channel signs messages,
+    // but there's no DM to reply into — ctx.reply() there sends into the channel itself, which
+    // rejects a ReplyKeyboardRemove/inline-keyboard-gated prompt outright. This flow only makes
+    // sense for someone actually conversing with the bot.
+    if (!ctx.from || ctx.channelPost) {
       return next();
     }
 
