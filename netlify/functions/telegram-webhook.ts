@@ -23,5 +23,18 @@ export default async (req: Request): Promise<Response> => {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  return getHandler()(req);
+  // grammY's bot.catch() (registered in createBot.ts) only fires for handleUpdates() — the
+  // long-polling batch path. webhookCallback drives handleUpdate() (singular) directly with no
+  // error handling of its own, so an unhandled error here would otherwise reject straight out of
+  // this function, Netlify would return a 502 with the raw exception, and Telegram would then
+  // retry the *same* update indefinitely on any non-200 response — turning one bug into an
+  // unbounded, ever-growing backlog. Catch here, log, and always ack with 200: retrying an
+  // application error doesn't fix it, and for some updates (e.g. a delete-range job) a retry
+  // could re-run already-completed side effects.
+  try {
+    return await getHandler()(req);
+  } catch (error) {
+    logger.error({ error }, 'Unhandled error processing webhook update');
+    return new Response('ok');
+  }
 };
