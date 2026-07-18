@@ -9,7 +9,7 @@ import { startCommand } from '@/bot/commands/start.js';
 import { supportCommand } from '@/bot/commands/support.js';
 import type { BotContext } from '@/bot/context.js';
 import { createAutoCleanupFlow } from '@/bot/flows/autoCleanup.js';
-import { createBroadcastFlow } from '@/bot/flows/broadcast.js';
+import { createBroadcastFlow, parseAudienceCallback } from '@/bot/flows/broadcast.js';
 import { createDeleteRangeFlow } from '@/bot/flows/deleteRange.js';
 import { mainMenuKeyboard } from '@/bot/keyboards/mainMenu.js';
 import { createIdentifyUserMiddleware } from '@/bot/middleware/identifyUser.js';
@@ -84,6 +84,15 @@ export function createBot(db: Database): Bot<BotContext> {
   bot.callbackQuery('flow:confirm', (ctx) => deleteRange.handleConfirm(ctx));
 
   bot.callbackQuery(/^autocleanup:channel:/, (ctx) => autoCleanup.handleChannelChoice(ctx));
+  bot.callbackQuery(/^broadcast:audience:/, async (ctx) => {
+    const audience = parseAudienceCallback(ctx.callbackQuery.data);
+    if (!audience) {
+      await ctx.answerCallbackQuery();
+      return;
+    }
+    await broadcast.handleAudienceChoice(ctx, audience);
+  });
+  bot.callbackQuery('broadcast:silent', (ctx) => broadcast.handleSilentToggle(ctx));
   bot.callbackQuery('broadcast:confirm', (ctx) => broadcast.handleConfirm(ctx));
   bot.callbackQuery('broadcast:cancel', async (ctx) => {
     await ctx.answerCallbackQuery();
@@ -103,7 +112,7 @@ export function createBot(db: Database): Bot<BotContext> {
 
   bot.on('message', async (ctx) => {
     if (await deleteRange.handleForwardedMessage(ctx)) return;
-    if (await broadcast.handleText(ctx)) return;
+    if (await broadcast.handleContent(ctx)) return;
     if (await autoCleanup.handleDaysInput(ctx)) return;
     if (ctx.message.text?.startsWith('/')) return;
     await ctx.reply(t(ctx.locale, 'errors.invalid'), {

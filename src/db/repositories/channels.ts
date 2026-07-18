@@ -83,3 +83,10 @@ export async function getAnyChannelMember(db: Database, channelId: number) {
     .where(eq(channelMembers.channelId, channelId));
   return rows.find((row) => row.role === 'owner') ?? rows[0];
 }
+
+/** Every user who administers at least one channel through the bot — the "admins" broadcast
+ * audience. */
+export async function getChannelAdminUserIds(db: Database): Promise<number[]> {
+  const rows = await db.selectDistinct({ userId: channelMembers.userId }).from(channelMembers);
+  return rows.map((row) => row.userId);
+}

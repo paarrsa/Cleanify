@@ -18,8 +18,12 @@ manually deleting hundreds of messages one at a time.
   message content).
 - **Scheduled auto-cleanup** — optionally auto-delete messages older than N days, going forward
   from whenever Cleanify starts watching a channel (`/autocleanup`, `/autocleanup off`).
-- **Admin broadcast** — `/broadcast`, restricted to `ADMIN_USER_IDS` and gated behind an explicit
-  confirmation, replacing the legacy bot's unauthenticated broadcast endpoint.
+- **Admin broadcast** — `/broadcast`, restricted to `ADMIN_USER_IDS`, replacing the legacy bot's
+  unauthenticated broadcast endpoint. Send any content (text/photo/video/document — sent as-is,
+  formatting included), pick an audience (all users, by language, or channel admins only) and
+  whether it's silent, then confirm. Sending itself is queued and drained in small batches by an
+  externally-triggered function (see [Broadcast delivery](#broadcast-delivery)) rather than
+  blocking the webhook, so it isn't limited by how many recipients there are.
 - **English and Persian** UI out of the box, with a straightforward path for contributing more
   languages.
 
@@ -57,6 +61,24 @@ npm run setup-webhook -- https://<your-deploy-preview>.netlify.app/webhook
 
 Day-to-day development should rely on the unit/integration test suite (mocked Telegram API,
 in-memory Postgres) rather than live webhook delivery.
+
+### Broadcast delivery
+
+`/broadcast` queues a job instead of sending inline — a single Netlify Function invocation has a
+hard execution time limit, and sending to a large user base one message at a time would blow past
+it long before finishing. `netlify/functions/process-broadcast.ts` drains one small batch of the
+oldest queued job per invocation and is meant to be hit repeatedly by an external scheduler until
+the job completes. Netlify's own Scheduled Functions don't support sub-minute intervals on every
+plan, so this project uses a free [cron-job.org](https://cron-job.org) job instead, pinging once a
+minute:
+
+```
+https://<your-site>.netlify.app/cron/broadcast?secret=<CRON_SECRET>
+```
+
+Set `CRON_SECRET` (see `.env.example`) to the same value in both Netlify's environment variables
+and the cron job's URL — without it, that URL alone would be enough for anyone to drive broadcast
+jobs, the same mistake the legacy bot's `sendToAll` endpoint made.
 
 ### Scripts
 

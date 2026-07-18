@@ -34,3 +34,8 @@ export async function getAllUserIds(db: Database): Promise<number[]> {
   const rows = await db.select({ id: users.id }).from(users);
   return rows.map((row) => row.id);
 }
+
+export async function getUserIdsByLanguage(db: Database, language: Locale): Promise<number[]> {
+  const rows = await db.select({ id: users.id }).from(users).where(eq(users.language, language));
+  return rows.map((row) => row.id);
+}

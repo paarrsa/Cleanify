@@ -1,26 +1,58 @@
-export type BroadcastFlowState = 'idle' | 'awaiting_text' | 'confirming';
+import type { BroadcastAudience } from '@/telegram/broadcastQueue.js';
+
+export type { BroadcastAudience };
+
+export type BroadcastFlowState = 'idle' | 'awaiting_content' | 'configuring';
 
 export interface BroadcastFlowSession {
   state: BroadcastFlowState;
-  text?: string;
+  fromChatId?: number;
+  messageId?: number;
+  audience?: BroadcastAudience;
+  silent?: boolean;
 }
 
 export const initialBroadcastFlowSession: BroadcastFlowSession = { state: 'idle' };
 
 export function startBroadcastFlow(): BroadcastFlowSession {
-  return { state: 'awaiting_text' };
+  return { state: 'awaiting_content' };
 }
 
-/** Returns undefined (rather than a result union, since this flow has only one failure mode) if
- * called outside of awaiting_text. */
-export function receiveBroadcastText(
+/** Returns undefined if called outside of awaiting_content. Defaults to the "all users" audience
+ * and notifications on — both adjustable on the options screen before confirming. */
+export function receiveBroadcastContent(
   session: BroadcastFlowSession,
-  text: string,
+  content: { fromChatId: number; messageId: number },
 ): BroadcastFlowSession | undefined {
-  if (session.state !== 'awaiting_text') {
+  if (session.state !== 'awaiting_content') {
     return undefined;
   }
-  return { state: 'confirming', text };
+  return {
+    state: 'configuring',
+    fromChatId: content.fromChatId,
+    messageId: content.messageId,
+    audience: 'all',
+    silent: false,
+  };
+}
+
+export function setBroadcastAudience(
+  session: BroadcastFlowSession,
+  audience: BroadcastAudience,
+): BroadcastFlowSession | undefined {
+  if (session.state !== 'configuring') {
+    return undefined;
+  }
+  return { ...session, audience };
+}
+
+export function toggleBroadcastSilent(
+  session: BroadcastFlowSession,
+): BroadcastFlowSession | undefined {
+  if (session.state !== 'configuring') {
+    return undefined;
+  }
+  return { ...session, silent: !session.silent };
 }
 
 export function resetBroadcastFlow(): BroadcastFlowSession {

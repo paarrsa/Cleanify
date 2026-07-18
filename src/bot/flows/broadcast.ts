@@ -1,26 +1,46 @@
 import type { BotContext } from '@/bot/context.js';
 import {
+  broadcastOptionsKeyboard,
   cancelBroadcastKeyboard,
-  confirmBroadcastKeyboard,
 } from '@/bot/keyboards/confirmBroadcast.js';
 import { mainMenuKeyboard } from '@/bot/keyboards/mainMenu.js';
 import {
-  receiveBroadcastText,
+  receiveBroadcastContent,
   resetBroadcastFlow,
+  setBroadcastAudience,
   startBroadcastFlow,
+  toggleBroadcastSilent,
+  type BroadcastAudience,
 } from '@/bot/state/broadcastFlowState.js';
 import { getEnv } from '@/config/env.js';
 import type { Database } from '@/db/client.js';
-import { getAllUserIds } from '@/db/repositories/users.js';
-import { t } from '@/i18n/index.js';
+import { getChannelAdminUserIds } from '@/db/repositories/channels.js';
+import { createJob } from '@/db/repositories/jobs.js';
+import { getAllUserIds, getUserIdsByLanguage } from '@/db/repositories/users.js';
+import { isSupportedLocale, t } from '@/i18n/index.js';
 import { logger } from '@/logging/logger.js';
-import { broadcastToUsers } from '@/telegram/broadcastQueue.js';
+import type { BroadcastJobPayload } from '@/telegram/broadcastQueue.js';
 
 /** Telegram authenticates `ctx.from.id` for us (webhook secret + Bot API), so this allowlist
  * check is sufficient auth — no separate credential scheme needed, unlike the legacy bot's
  * unauthenticated HTTP broadcast endpoint. */
 export function isAdmin(ctx: BotContext): boolean {
   return ctx.from !== undefined && getEnv().ADMIN_USER_IDS.includes(ctx.from.id);
+}
+
+async function resolveAudienceUserIds(
+  db: Database,
+  audience: BroadcastAudience,
+): Promise<number[]> {
+  switch (audience) {
+    case 'all':
+      return getAllUserIds(db);
+    case 'en':
+    case 'fa':
+      return getUserIdsByLanguage(db, audience);
+    case 'admins':
+      return getChannelAdminUserIds(db);
+  }
 }
 
 export function createBroadcastFlow(db: Database) {
@@ -30,7 +50,7 @@ export function createBroadcastFlow(db: Database) {
       return;
     }
     ctx.session.broadcast = startBroadcastFlow();
-    await ctx.reply(t(ctx.locale, 'broadcast.prompt'), {
+    await ctx.reply(t(ctx.locale, 'broadcast.contentPrompt'), {
       reply_markup: cancelBroadcastKeyboard(ctx.locale),
     });
   }
@@ -42,48 +62,125 @@ export function createBroadcastFlow(db: Database) {
     });
   }
 
-  /** Returns true if the message was consumed as broadcast text input. */
-  async function handleText(ctx: BotContext): Promise<boolean> {
-    const text = ctx.message?.text;
-    if (!isAdmin(ctx) || !text || ctx.session.broadcast.state !== 'awaiting_text') {
+  /** Renders (or re-renders, via edit) the audience/silent/confirm options screen, with a live
+   * recipient count for whichever audience is currently selected. */
+  async function showOptions(ctx: BotContext, edit: boolean) {
+    const { broadcast } = ctx.session;
+    if (broadcast.state !== 'configuring' || !broadcast.audience) {
+      return;
+    }
+    const count = (await resolveAudienceUserIds(db, broadcast.audience)).length;
+    const text = t(ctx.locale, 'broadcast.optionsPrompt', { count });
+    const reply_markup = broadcastOptionsKeyboard(
+      ctx.locale,
+      broadcast.audience,
+      broadcast.silent ?? false,
+    );
+    if (edit) {
+      await ctx.editMessageText(text, { reply_markup });
+    } else {
+      await ctx.reply(text, { reply_markup });
+    }
+  }
+
+  /** Returns true if the message was consumed as broadcast content (any message type — text,
+   * photo, video, document, ... — copyMessage re-sends it as-is to every recipient). */
+  async function handleContent(ctx: BotContext): Promise<boolean> {
+    if (!isAdmin(ctx) || !ctx.message || ctx.session.broadcast.state !== 'awaiting_content') {
       return false;
     }
-    const next = receiveBroadcastText(ctx.session.broadcast, text);
+    const next = receiveBroadcastContent(ctx.session.broadcast, {
+      fromChatId: ctx.message.chat.id,
+      messageId: ctx.message.message_id,
+    });
     if (!next) {
       return false;
     }
     ctx.session.broadcast = next;
-
-    const userIds = await getAllUserIds(db);
-    await ctx.reply(t(ctx.locale, 'broadcast.confirmPrompt', { count: userIds.length }), {
-      reply_markup: confirmBroadcastKeyboard(ctx.locale),
-    });
+    await showOptions(ctx, false);
     return true;
+  }
+
+  async function handleAudienceChoice(ctx: BotContext, audience: BroadcastAudience) {
+    await ctx.answerCallbackQuery();
+    if (!isAdmin(ctx)) {
+      return;
+    }
+    const next = setBroadcastAudience(ctx.session.broadcast, audience);
+    if (!next) {
+      return;
+    }
+    ctx.session.broadcast = next;
+    await showOptions(ctx, true);
+  }
+
+  async function handleSilentToggle(ctx: BotContext) {
+    await ctx.answerCallbackQuery();
+    if (!isAdmin(ctx)) {
+      return;
+    }
+    const next = toggleBroadcastSilent(ctx.session.broadcast);
+    if (!next) {
+      return;
+    }
+    ctx.session.broadcast = next;
+    await showOptions(ctx, true);
   }
 
   async function handleConfirm(ctx: BotContext) {
     await ctx.answerCallbackQuery();
     const { broadcast } = ctx.session;
-    if (!isAdmin(ctx) || broadcast.state !== 'confirming' || !broadcast.text) {
+    if (
+      !isAdmin(ctx) ||
+      !ctx.from ||
+      broadcast.state !== 'configuring' ||
+      broadcast.fromChatId === undefined ||
+      broadcast.messageId === undefined ||
+      !broadcast.audience
+    ) {
       return;
     }
-    const text = broadcast.text;
+
+    const { fromChatId, messageId, audience, silent } = broadcast;
+    const userIds = await resolveAudienceUserIds(db, audience);
     ctx.session.broadcast = resetBroadcastFlow();
 
-    const userIds = await getAllUserIds(db);
-    await ctx.reply(t(ctx.locale, 'broadcast.sending', { count: userIds.length }));
-
-    // Runs synchronously within the webhook response, same execution-time caveat as the
-    // delete-range flow — a candidate for a Netlify Background Function for large user bases.
-    try {
-      const { sent, failed } = await broadcastToUsers(ctx.api, userIds, text);
-      await ctx.reply(t(ctx.locale, 'broadcast.done', { count: sent, failed }), {
-        reply_markup: mainMenuKeyboard(ctx.locale),
-      });
-    } catch (error) {
-      logger.error({ error }, 'Broadcast failed');
+    if (userIds.length === 0) {
+      await ctx.editMessageText(t(ctx.locale, 'broadcast.emptyAudience'));
+      return;
     }
+
+    const payload: BroadcastJobPayload = {
+      fromChatId,
+      messageId,
+      silent: silent ?? false,
+      audience,
+      remainingUserIds: userIds,
+      totalCount: userIds.length,
+      sentCount: 0,
+      failedCount: 0,
+    };
+    const job = await createJob(db, {
+      type: 'broadcast',
+      requestedBy: ctx.from.id,
+      payload,
+      status: 'running',
+    });
+
+    await ctx.editMessageText(t(ctx.locale, 'broadcast.queued', { count: userIds.length }));
+    logger.info({ jobId: job.id, audience, count: userIds.length }, 'Broadcast job queued');
   }
 
-  return { begin, cancel, handleText, handleConfirm };
+  return { begin, cancel, handleContent, handleAudienceChoice, handleSilentToggle, handleConfirm };
+}
+
+/** Parses `broadcast:audience:<value>` callback data, guarding against unexpected/tampered
+ * callback_data rather than trusting it's always one of our own generated buttons. */
+export function parseAudienceCallback(data: string | undefined): BroadcastAudience | undefined {
+  const value = data?.split(':')[2];
+  return value && isBroadcastAudience(value) ? value : undefined;
+}
+
+function isBroadcastAudience(value: string): value is BroadcastAudience {
+  return value === 'all' || value === 'admins' || isSupportedLocale(value);
 }

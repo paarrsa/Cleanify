@@ -9,3 +9,8 @@
   from = "/webhook"
   to = "/.netlify/functions/telegram-webhook"
   status = 200
+
+[[redirects]]
+  from = "/cron/broadcast"
+  to = "/.netlify/functions/process-broadcast"
+  status = 200

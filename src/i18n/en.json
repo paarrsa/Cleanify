@@ -48,13 +48,22 @@
   },
   "broadcast": {
     "unauthorized": "You're not authorized to use this command.",
-    "prompt": "Send the message you want to broadcast to all users.",
-    "confirmPrompt": "Send this to {count} users?",
+    "contentPrompt": "Send me anything to broadcast — text, a photo, a video, or a document. It'll be sent exactly as you send it, formatting included.",
+    "optionsPrompt": "Ready to send to {count} recipients. Choose an audience and options below, then confirm.",
+    "audience": {
+      "all": "👥 All users",
+      "en": "🇬🇧 English speakers",
+      "fa": "🇮🇷 Persian speakers",
+      "admins": "🛡️ Channel admins"
+    },
+    "silentOn": "🔇 Silent: On",
+    "silentOff": "🔔 Silent: Off",
     "confirmYes": "✅ Send",
     "confirmNo": "❌ Cancel",
     "cancelled": "Broadcast cancelled.",
-    "sending": "Sending broadcast to {count} users...",
-    "done": "Broadcast sent to {count} users ({failed} failed)."
+    "emptyAudience": "No recipients match that audience — nothing was sent.",
+    "queued": "Broadcast queued for {count} recipients. It'll go out gradually over the next few minutes; I'll message you here once it's done.",
+    "completed": "Broadcast finished: sent to {sent} recipients ({failed} failed)."
   },
   "scheduledCleanup": {
     "setupCancelled": "Auto-cleanup setup cancelled.",
