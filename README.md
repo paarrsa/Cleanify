@@ -17,13 +17,15 @@ manually deleting hundreds of messages one at a time.
 - **Cleanup history** — an audit log of past cleanups (message ranges and timestamps only, never
   message content).
 - **Scheduled auto-cleanup** — optionally auto-delete messages older than N days, going forward
-  from whenever Cleanify starts watching a channel (`/autocleanup`, `/autocleanup off`).
+  from whenever Cleanify starts watching a channel (`/autocleanup`, `/autocleanup off`). Checked
+  roughly once a minute (see [Background jobs](#background-jobs)), so a message is deleted within
+  about a minute of crossing its configured age rather than sitting for up to an hour.
 - **Admin broadcast** — `/broadcast`, restricted to `ADMIN_USER_IDS`, replacing the legacy bot's
   unauthenticated broadcast endpoint. Send any content (text/photo/video/document — sent as-is,
   formatting included), pick an audience (all users, by language, or channel admins only) and
-  whether it's silent, then confirm. Sending itself is queued and drained in small batches by an
-  externally-triggered function (see [Broadcast delivery](#broadcast-delivery)) rather than
-  blocking the webhook, so it isn't limited by how many recipients there are.
+  whether it's silent, then confirm. Sending itself is queued and drained in small batches (see
+  [Background jobs](#background-jobs)) rather than blocking the webhook, so it isn't limited by
+  how many recipients there are.
 - **English and Persian** UI out of the box, with a straightforward path for contributing more
   languages.
 
@@ -62,23 +64,24 @@ npm run setup-webhook -- https://<your-deploy-preview>.netlify.app/webhook
 Day-to-day development should rely on the unit/integration test suite (mocked Telegram API,
 in-memory Postgres) rather than live webhook delivery.
 
-### Broadcast delivery
+### Background jobs
 
-`/broadcast` queues a job instead of sending inline — a single Netlify Function invocation has a
-hard execution time limit, and sending to a large user base one message at a time would blow past
-it long before finishing. `netlify/functions/process-broadcast.ts` drains one small batch of the
-oldest queued job per invocation and is meant to be hit repeatedly by an external scheduler until
-the job completes. Netlify's own Scheduled Functions don't support sub-minute intervals on every
-plan, so this project uses a free [cron-job.org](https://cron-job.org) job instead, pinging once a
-minute:
+Two things need to happen on a timer rather than in response to a Telegram update: draining a
+queued `/broadcast` job in small batches (a single Netlify Function invocation has a hard
+execution time limit, and sending to a large user base one message at a time inline would blow
+past it long before finishing) and sweeping channels for auto-cleanup-eligible messages. Both are
+driven by `netlify/functions/cron-tick.ts` — one endpoint, hit roughly once a minute by an
+external scheduler. Netlify's own Scheduled Functions don't support sub-minute intervals on every
+plan, so this project uses a free [cron-job.org](https://cron-job.org) job instead:
 
 ```
-https://<your-site>.netlify.app/cron/broadcast?secret=<CRON_SECRET>
+https://<your-site>.netlify.app/cron/tick?secret=<CRON_SECRET>
 ```
 
 Set `CRON_SECRET` (see `.env.example`) to the same value in both Netlify's environment variables
-and the cron job's URL — without it, that URL alone would be enough for anyone to drive broadcast
-jobs, the same mistake the legacy bot's `sendToAll` endpoint made.
+and the cron job's URL — without it, that URL alone would be enough for anyone to trigger
+broadcast jobs, the same mistake the legacy bot's unauthenticated `sendToAll` endpoint made. New
+periodic work should be added inside `cron-tick.ts` rather than wiring up a second scheduler.
 
 ### Scripts
 
@@ -97,8 +100,9 @@ jobs, the same mistake the legacy bot's `sendToAll` endpoint made.
 ## Architecture
 
 ```
-netlify/functions/   Thin adapters: verify the request, delegate into src/bot
+netlify/functions/   Thin adapters: verify the request, delegate into src/bot or src/jobs
 src/bot/              grammY bot: commands, multi-step flows, keyboards, middleware
+src/jobs/              Background work driven by cron-tick.ts (broadcast draining, auto-cleanup)
 src/db/                Drizzle schema, migrations, repositories
 src/telegram/          Reusable Telegram API helpers (e.g. chunked/rate-limit-aware deletion)
 src/i18n/               Translation strings and loader

@@ -62,8 +62,9 @@
     "confirmNo": "❌ Cancel",
     "cancelled": "Broadcast cancelled.",
     "emptyAudience": "No recipients match that audience — nothing was sent.",
-    "queued": "Broadcast queued for {count} recipients. It'll go out gradually over the next few minutes; I'll message you here once it's done.",
-    "completed": "Broadcast finished: sent to {sent} recipients ({failed} failed)."
+    "progress": "📡 Sending broadcast... {sent}/{total} sent, {failed} failed, {remaining} remaining.",
+    "failuresHeader": "Failures:",
+    "completed": "✅ Broadcast finished: {sent} sent, {failed} failed.{breakdown}"
   },
   "scheduledCleanup": {
     "setupCancelled": "Auto-cleanup setup cancelled.",

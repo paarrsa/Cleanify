@@ -1,8 +1,6 @@
-import type { Config } from '@netlify/functions';
-import { Api } from 'grammy';
+import type { Api } from 'grammy';
 
-import { getEnv } from '@/config/env.js';
-import { getDb } from '@/db/client.js';
+import type { Database } from '@/db/client.js';
 import { recordAuditLogEntry } from '@/db/repositories/auditLog.js';
 import {
   getAnyChannelMember,
@@ -15,18 +13,24 @@ import { deleteMessagesByIds } from '@/telegram/deleteQueue.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-/**
- * Runs on a cron schedule (see `config.schedule` below). For every channel with auto-cleanup
- * enabled, deletes messages older than its configured retention window. Only ever covers
- * messages the bot has personally observed via `channel_post` since it started watching the
- * channel (see `message_log` / the schema comment on `channels.autoCleanupEnabled`) — it cannot
- * retroactively clean pre-install history.
- */
-export default async (): Promise<Response> => {
-  const env = getEnv();
-  const db = getDb();
-  const api = new Api(env.TELEGRAM_BOT_TOKEN);
+export interface ScheduledCleanupResult {
+  channelsEligible: number;
+  channelsProcessed: number;
+}
 
+/**
+ * For every channel with auto-cleanup enabled, deletes messages older than its configured
+ * retention window. Only ever covers messages the bot has personally observed via `channel_post`
+ * since it started watching the channel (see `message_log` / the schema comment on
+ * `channels.autoCleanupEnabled`) — it cannot retroactively clean pre-install history.
+ *
+ * Meant to be invoked frequently (see netlify/functions/cron-tick.ts) rather than run once and
+ * left — a message can only sit as stale as the calling interval before this catches it.
+ */
+export async function runScheduledCleanup(
+  db: Database,
+  api: Pick<Api, 'deleteMessages'>,
+): Promise<ScheduledCleanupResult> {
   const channels = await getChannelsWithAutoCleanupEnabled(db);
   let processed = 0;
 
@@ -66,13 +70,5 @@ export default async (): Promise<Response> => {
     }
   }
 
-  logger.info(
-    { channelsProcessed: processed, channelsEligible: channels.length },
-    'Scheduled cleanup run complete',
-  );
-  return new Response('ok');
-};
-
-export const config: Config = {
-  schedule: '0 * * * *',
-};
+  return { channelsEligible: channels.length, channelsProcessed: processed };
+}

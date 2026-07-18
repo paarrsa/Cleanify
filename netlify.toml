@@ -11,6 +11,6 @@
   status = 200
 
 [[redirects]]
-  from = "/cron/broadcast"
-  to = "/.netlify/functions/process-broadcast"
+  from = "/cron/tick"
+  to = "/.netlify/functions/cron-tick"
   status = 200

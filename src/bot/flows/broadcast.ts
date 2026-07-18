@@ -150,6 +150,23 @@ export function createBroadcastFlow(db: Database) {
       return;
     }
 
+    // This same message becomes the live progress display, edited in place by
+    // processBroadcastBatch on every tick — so the admin can watch it advance instead of just
+    // getting a single message at the very end.
+    await ctx.editMessageText(
+      t(ctx.locale, 'broadcast.progress', {
+        sent: 0,
+        failed: 0,
+        remaining: userIds.length,
+        total: userIds.length,
+      }),
+    );
+    const statusMessage = ctx.callbackQuery?.message;
+    if (!statusMessage) {
+      logger.error({ audience }, 'Broadcast confirm: no status message to attach progress to');
+      return;
+    }
+
     const payload: BroadcastJobPayload = {
       fromChatId,
       messageId,
@@ -159,6 +176,9 @@ export function createBroadcastFlow(db: Database) {
       totalCount: userIds.length,
       sentCount: 0,
       failedCount: 0,
+      failureReasons: {},
+      statusChatId: statusMessage.chat.id,
+      statusMessageId: statusMessage.message_id,
     };
     const job = await createJob(db, {
       type: 'broadcast',
@@ -167,7 +187,6 @@ export function createBroadcastFlow(db: Database) {
       status: 'running',
     });
 
-    await ctx.editMessageText(t(ctx.locale, 'broadcast.queued', { count: userIds.length }));
     logger.info({ jobId: job.id, audience, count: userIds.length }, 'Broadcast job queued');
   }
 

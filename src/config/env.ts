@@ -5,9 +5,9 @@ const envSchema = z.object({
   TELEGRAM_WEBHOOK_SECRET: z
     .string()
     .min(16, 'TELEGRAM_WEBHOOK_SECRET must be at least 16 characters'),
-  /** Authenticates the external cron trigger (see netlify/functions/process-broadcast.ts) —
-   * without this, that endpoint's URL alone would be enough for anyone to drive broadcast jobs,
-   * repeating the legacy bot's unauthenticated sendToAll endpoint mistake. */
+  /** Authenticates the external cron trigger (see netlify/functions/cron-tick.ts) — without
+   * this, that endpoint's URL alone would be enough for anyone to drive broadcast jobs, repeating
+   * the legacy bot's unauthenticated sendToAll endpoint mistake. */
   CRON_SECRET: z.string().min(16, 'CRON_SECRET must be at least 16 characters'),
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid connection string'),
   ADMIN_USER_IDS: z
