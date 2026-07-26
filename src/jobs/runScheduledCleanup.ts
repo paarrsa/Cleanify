@@ -24,8 +24,8 @@ export interface ScheduledCleanupResult {
  * since it started watching the channel (see `message_log` / the schema comment on
  * `channels.autoCleanupEnabled`) — it cannot retroactively clean pre-install history.
  *
- * Meant to be invoked frequently (see netlify/functions/cron-tick.ts) rather than run once and
- * left — a message can only sit as stale as the calling interval before this catches it.
+ * Meant to be invoked frequently (see src/index.ts) rather than run once and left — a message
+ * can only sit as stale as the calling interval before this catches it.
  */
 export async function runScheduledCleanup(
   db: Database,

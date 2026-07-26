@@ -5,7 +5,7 @@ import prettierConfig from 'eslint-config-prettier';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'legacy-php/**', '.netlify/**'],
+    ignores: ['dist/**', 'node_modules/**', 'legacy-php/**'],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -23,6 +23,13 @@ export default tseslint.config(
       ],
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-floating-promises': 'error',
+    },
+  },
+  {
+    // PM2's config format is CommonJS even though the rest of this repo is "type": "module".
+    files: ['*.cjs'],
+    languageOptions: {
+      globals: { module: 'writable', require: 'readonly' },
     },
   },
   prettierConfig,

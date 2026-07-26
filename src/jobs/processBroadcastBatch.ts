@@ -55,10 +55,10 @@ async function updateStatusMessage(api: Api, payload: BroadcastJobPayload, text:
 
 /**
  * Drains one batch of the oldest running broadcast job, if any, and persists progress — safe to
- * call with no job queued (no-op) or mid-job (resumes where it left off). Running the send loop
- * here instead of inline in the webhook handler is what keeps a large broadcast from ever risking
- * the webhook's own execution timeout. Meant to be invoked repeatedly (see
- * netlify/functions/cron-tick.ts) until the job completes.
+ * call with no job queued (no-op) or mid-job (resumes where it left off). Batching (rather than
+ * sending the whole recipient list in one call) keeps each tick short and progress visible
+ * incrementally, and keeps a single huge broadcast from starving the cron loop of its next run.
+ * Meant to be invoked repeatedly (see src/index.ts) until the job completes.
  */
 export async function processBroadcastBatch(
   db: Database,

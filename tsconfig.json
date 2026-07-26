@@ -23,6 +23,6 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src", "netlify", "test", "scripts", "*.config.ts", "*.config.js"],
+  "include": ["src", "test", "scripts", "*.config.ts", "*.config.js", "*.config.cjs"],
   "exclude": ["node_modules", "dist", "legacy-php"]
 }

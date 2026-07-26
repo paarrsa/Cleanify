@@ -38,8 +38,9 @@ function createNeonSessionStorage(db: Database): StorageAdapter<SessionData> {
   };
 }
 
-/** grammY session middleware, persisted in Neon (bot_sessions table) instead of in-memory, since
- * a Netlify Function instance doesn't persist state between invocations. */
+/** grammY session middleware, persisted in Neon (bot_sessions table) instead of in-memory, so an
+ * in-progress multi-step flow (delete-range, broadcast, auto-cleanup setup) survives a PM2
+ * restart or deploy instead of leaving the user stuck mid-flow. */
 export function createSessionMiddleware(db: Database) {
   return session<SessionData, BotContext>({
     initial: (): SessionData => ({

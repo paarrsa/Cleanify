@@ -196,10 +196,12 @@ export function createDeleteRangeFlow(db: Database) {
     }
     await ctx.reply(t(ctx.locale, 'deleteFlow.waiting'));
 
-    // Runs synchronously within the webhook response. Fine for typical ranges; very large ranges
-    // (tens of thousands of messages, i.e. hundreds of chunked API calls) risk the function's
-    // execution time limit — a candidate for a Netlify Background Function if that becomes an
-    // issue in practice.
+    // Runs synchronously within this update's handling. Fine for typical ranges; very large ones
+    // (tens of thousands of messages, i.e. hundreds of chunked API calls) take a while and, since
+    // grammY's simple long polling processes updates sequentially (see src/index.ts), delay
+    // *other* users' messages from being handled until this one finishes. If that becomes a
+    // problem in practice, either move this to the same batched-job pattern broadcasts use, or
+    // switch to @grammyjs/runner for concurrent update processing.
     try {
       const { attemptedCount } = await deleteMessageRange(
         ctx.api,

@@ -23,18 +23,20 @@ manually deleting hundreds of messages one at a time.
 - **Admin broadcast** — `/broadcast`, restricted to `ADMIN_USER_IDS`, replacing the legacy bot's
   unauthenticated broadcast endpoint. Send any content (text/photo/video/document — sent as-is,
   formatting included), pick an audience (all users, by language, or channel admins only) and
-  whether it's silent, then confirm. Sending itself is queued and drained in small batches (see
-  [Background jobs](#background-jobs)) rather than blocking the webhook, so it isn't limited by
-  how many recipients there are.
+  whether it's silent, then confirm. A live progress message tracks sent/failed/remaining as it
+  goes, and the final report breaks down _why_ any sends failed. Sending itself is queued and
+  drained in small batches (see [Background jobs](#background-jobs)) rather than blocking the bot,
+  so it isn't limited by how many recipients there are.
 - **English and Persian** UI out of the box, with a straightforward path for contributing more
   languages.
 
 ## Tech stack
 
-- [grammY](https://grammy.dev) (TypeScript-first Telegram Bot API framework)
-- [Netlify Functions](https://docs.netlify.com/functions/overview/) (serverless hosting)
-- [Neon](https://neon.tech) (serverless Postgres) + [Drizzle ORM](https://orm.drizzle.team)
-- [Vitest](https://vitest.dev) + [msw](https://mswjs.io) for testing
+- [grammY](https://grammy.dev) (TypeScript-first Telegram Bot API framework), running long
+  polling under [PM2](https://pm2.keymetrics.io)
+- [Neon](https://neon.tech) (serverless Postgres, works fine as a normal pooled connection from a
+  persistent process) + [Drizzle ORM](https://orm.drizzle.team)
+- [Vitest](https://vitest.dev) for testing
 
 ## Getting started
 
@@ -42,52 +44,81 @@ manually deleting hundreds of messages one at a time.
 
 - Node.js 20+
 - A Telegram bot token from [@BotFather](https://t.me/BotFather)
-- A [Neon](https://neon.tech) Postgres database
-- The [Netlify CLI](https://docs.netlify.com/cli/get-started/) for local development
+- A [Neon](https://neon.tech) Postgres database (or any Postgres — Neon isn't required)
 
-### Setup
+### Local setup
 
 ```bash
 npm install
-cp .env.example .env   # fill in TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, DATABASE_URL, ...
+cp .env.example .env   # fill in TELEGRAM_BOT_TOKEN, DATABASE_URL, ADMIN_USER_IDS
 npm run db:migrate
-npm run dev             # runs `netlify dev`, serving functions locally
+npm run dev             # tsx watch src/index.ts — restarts on file changes
 ```
 
-Telegram can't deliver webhooks to `localhost` directly. For real end-to-end testing, register a
-second, throwaway bot via BotFather and point it at a Netlify Deploy Preview URL:
-
-```bash
-npm run setup-webhook -- https://<your-deploy-preview>.netlify.app/webhook
-```
-
-Day-to-day development should rely on the unit/integration test suite (mocked Telegram API,
-in-memory Postgres) rather than live webhook delivery.
+Cleanify uses long polling (the bot pulls updates from Telegram itself), so there's no public
+HTTPS endpoint, domain, or webhook setup needed to test locally or in production — `npm run dev`
+talks to real Telegram and your real database immediately.
 
 ### Background jobs
 
 Two things need to happen on a timer rather than in response to a Telegram update: draining a
-queued `/broadcast` job in small batches (a single Netlify Function invocation has a hard
-execution time limit, and sending to a large user base one message at a time inline would blow
-past it long before finishing) and sweeping channels for auto-cleanup-eligible messages. Both are
-driven by `netlify/functions/cron-tick.ts` — one endpoint, hit roughly once a minute by an
-external scheduler. Netlify's own Scheduled Functions don't support sub-minute intervals on every
-plan, so this project uses a free [cron-job.org](https://cron-job.org) job instead:
+queued `/broadcast` job in small batches, and sweeping channels for auto-cleanup-eligible
+messages. Because Cleanify runs as one persistent process instead of short-lived functions, this
+is just a plain `setInterval` inside `src/index.ts` (roughly once a minute) — no external
+scheduler or extra authentication needed. New periodic work should be added there.
 
-```
-https://<your-site>.netlify.app/cron/tick?secret=<CRON_SECRET>
+## Deployment (VPS + PM2)
+
+Assumes Node.js 20+ and [PM2](https://pm2.keymetrics.io) (`npm install -g pm2`) are already
+installed on the server.
+
+```bash
+git clone https://github.com/paarrsa/Cleanify.git
+cd Cleanify
+npm ci
+cp .env.example .env
+nano .env                 # fill in TELEGRAM_BOT_TOKEN, DATABASE_URL, ADMIN_USER_IDS, ...
+npm run db:migrate        # applies any pending schema migrations
+pm2 start ecosystem.config.cjs
+pm2 save                  # persists the process list
+pm2 startup               # prints (and can run) the command to restore it on server reboot
 ```
 
-Set `CRON_SECRET` (see `.env.example`) to the same value in both Netlify's environment variables
-and the cron job's URL — without it, that URL alone would be enough for anyone to trigger
-broadcast jobs, the same mistake the legacy bot's unauthenticated `sendToAll` endpoint made. New
-periodic work should be added inside `cron-tick.ts` rather than wiring up a second scheduler.
+`ecosystem.config.cjs` runs `npm start` (`tsx src/index.ts`) as a single PM2-managed process —
+deliberately **one instance, not cluster mode**: long polling and the cron loop both assume
+they're the only thing running, since two instances would each poll Telegram and process every
+broadcast/cleanup batch independently.
+
+**Deploying an update:**
+
+```bash
+cd Cleanify
+git pull
+npm ci
+npm run db:migrate        # no-op if there's nothing new to apply
+pm2 reload cleanify        # zero-downtime-ish restart; picks up the new code
+```
+
+**Operating:**
+
+| Command                | What it does                              |
+| ---------------------- | ----------------------------------------- |
+| `pm2 logs cleanify`    | Tail logs                                 |
+| `pm2 status`           | Check it's running, uptime, restart count |
+| `pm2 restart cleanify` | Hard restart                              |
+| `pm2 monit`            | Live CPU/memory view                      |
+
+If you're moving from an existing webhook-based deployment (e.g. Netlify), nothing needs to be
+unregistered by hand — the first time this process starts, grammY's `bot.start()` automatically
+calls Telegram's `deleteWebhook`, switching the bot over to polling. Just make sure the old
+deployment is stopped/removed around the same time so only one thing is trying to receive updates.
 
 ### Scripts
 
 | Command                                     | Description                                      |
 | ------------------------------------------- | ------------------------------------------------ |
-| `npm run dev`                               | Run the site + functions locally via Netlify CLI |
+| `npm run dev`                               | Run locally with auto-restart on file changes    |
+| `npm start`                                 | Run once, no auto-restart (what PM2 invokes)     |
 | `npm run lint` / `lint:fix`                 | ESLint                                           |
 | `npm run format` / `format:check`           | Prettier                                         |
 | `npm run typecheck`                         | `tsc --noEmit`                                   |
@@ -95,22 +126,18 @@ periodic work should be added inside `cron-tick.ts` rather than wiring up a seco
 | `npm run db:generate`                       | Generate a Drizzle migration from schema changes |
 | `npm run db:migrate`                        | Apply migrations to `DATABASE_URL`               |
 | `npm run db:studio`                         | Open Drizzle Studio against `DATABASE_URL`       |
-| `npm run setup-webhook -- <url>`            | Point Telegram's webhook at a deployed URL       |
 
 ## Architecture
 
 ```
-netlify/functions/   Thin adapters: verify the request, delegate into src/bot or src/jobs
-src/bot/              grammY bot: commands, multi-step flows, keyboards, middleware
-src/jobs/              Background work driven by cron-tick.ts (broadcast draining, auto-cleanup)
-src/db/                Drizzle schema, migrations, repositories
-src/telegram/          Reusable Telegram API helpers (e.g. chunked/rate-limit-aware deletion)
+src/index.ts           Entry point: starts the bot (long polling) and the cron loop
+src/bot/                grammY bot: commands, multi-step flows, keyboards, middleware
+src/jobs/               Background work driven by src/index.ts (broadcast draining, auto-cleanup)
+src/db/                 Drizzle schema, migrations, repositories
+src/telegram/           Reusable Telegram API helpers (e.g. chunked/rate-limit-aware deletion)
 src/i18n/               Translation strings and loader
 src/config/             Environment variable validation
 ```
-
-`src/` is framework-agnostic; `netlify/functions/` only adapts requests/responses, so the hosting
-layer can change without touching bot logic.
 
 ## Contributing
 

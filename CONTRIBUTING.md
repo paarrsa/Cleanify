@@ -20,8 +20,8 @@ CI runs the same checks on every push and pull request against `main`.
 
 ## Project conventions
 
-- `src/` holds framework-agnostic bot/business logic; `netlify/functions/` should stay a thin
-  adapter layer (parse the request, verify auth, call into `src/`, shape the response).
+- `src/` holds all bot/business logic; `src/index.ts` should stay a thin entry point (wire up the
+  bot, start polling, run the cron loop) rather than accumulating logic itself.
 - Multi-step user flows (e.g. the delete-range flow) are explicit state machines persisted per
   chat, not implicit control flow — see `src/bot/state/`. Keep transition logic as small, pure,
   unit-testable functions.

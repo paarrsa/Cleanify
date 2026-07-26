@@ -21,9 +21,9 @@ import { isSupportedLocale, t } from '@/i18n/index.js';
 import { logger } from '@/logging/logger.js';
 import type { BroadcastJobPayload } from '@/telegram/broadcastQueue.js';
 
-/** Telegram authenticates `ctx.from.id` for us (webhook secret + Bot API), so this allowlist
- * check is sufficient auth — no separate credential scheme needed, unlike the legacy bot's
- * unauthenticated HTTP broadcast endpoint. */
+/** Telegram authenticates `ctx.from.id` for us (long polling only accepts updates from Telegram's
+ * own servers via our bot token), so this allowlist check is sufficient auth — no separate
+ * credential scheme needed, unlike the legacy bot's unauthenticated HTTP broadcast endpoint. */
 export function isAdmin(ctx: BotContext): boolean {
   return ctx.from !== undefined && getEnv().ADMIN_USER_IDS.includes(ctx.from.id);
 }

@@ -1,4 +1,4 @@
-import { Bot, webhookCallback } from 'grammy';
+import { Bot } from 'grammy';
 import type { UserFromGetMe } from 'grammy/types';
 
 import { createChannelsCommand } from '@/bot/commands/channels.js';
@@ -120,18 +120,11 @@ export function createBot(db: Database): Bot<BotContext> {
     });
   });
 
-  // Note: this only fires for handleUpdates() (grammY's long-polling batch path), not the
-  // handleUpdate() call webhookCallback drives us through — kept for parity in case this ever
-  // moves off webhooks, but the real error boundary for the deployed webhook path is the
-  // try/catch in netlify/functions/telegram-webhook.ts.
+  // Protects the long-polling loop (see src/index.ts): grammY calls this for every update that
+  // throws, logs it, and moves on to the next update — one bad update can't crash the process.
   bot.catch((err) => {
     logger.error({ err: err.error, updateId: err.ctx.update.update_id }, 'Unhandled bot error');
   });
 
   return bot;
-}
-
-export function createWebhookHandler(db: Database) {
-  const bot = createBot(db);
-  return webhookCallback(bot, 'std/http');
 }
