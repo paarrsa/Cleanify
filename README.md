@@ -75,7 +75,7 @@ installed on the server.
 ```bash
 git clone https://github.com/paarrsa/Cleanify.git
 cd Cleanify
-npm ci
+npm ci --omit=dev
 cp .env.example .env
 nano .env                 # fill in TELEGRAM_BOT_TOKEN, DATABASE_URL, ADMIN_USER_IDS, ...
 npm run db:migrate        # applies any pending schema migrations
@@ -83,6 +83,10 @@ pm2 start ecosystem.config.cjs
 pm2 save                  # persists the process list
 pm2 startup               # prints (and can run) the command to restore it on server reboot
 ```
+
+`--omit=dev` skips lint/test/build tooling (eslint, vitest, drizzle-kit, ...) — none of it is
+needed to actually run the bot, and skipping it avoids those packages' stricter Node version
+requirements getting in the way on an older server Node install.
 
 `ecosystem.config.cjs` runs `npm start` (`tsx src/index.ts`) as a single PM2-managed process —
 deliberately **one instance, not cluster mode**: long polling and the cron loop both assume
@@ -94,7 +98,7 @@ broadcast/cleanup batch independently.
 ```bash
 cd Cleanify
 git pull
-npm ci
+npm ci --omit=dev
 npm run db:migrate        # no-op if there's nothing new to apply
 pm2 reload cleanify        # zero-downtime-ish restart; picks up the new code
 ```
