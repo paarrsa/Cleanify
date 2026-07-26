@@ -75,7 +75,7 @@ installed on the server.
 ```bash
 git clone https://github.com/paarrsa/Cleanify.git
 cd Cleanify
-npm ci --omit=dev
+npm install --omit=dev
 cp .env.example .env
 nano .env                 # fill in TELEGRAM_BOT_TOKEN, DATABASE_URL, ADMIN_USER_IDS, ...
 npm run db:migrate        # applies any pending schema migrations
@@ -86,7 +86,11 @@ pm2 startup               # prints (and can run) the command to restore it on se
 
 `--omit=dev` skips lint/test/build tooling (eslint, vitest, drizzle-kit, ...) — none of it is
 needed to actually run the bot, and skipping it avoids those packages' stricter Node version
-requirements getting in the way on an older server Node install.
+requirements getting in the way on an older server Node install. `npm install` rather than
+`npm ci` deliberately: older npm (this repo has hit it on 10.8.2) can fail `npm ci` outright on
+optional platform-specific packages that don't match the current OS/CPU (esbuild ships one per
+platform) instead of just skipping them, which is exactly the kind of thing `npm install` is more
+forgiving about.
 
 `ecosystem.config.cjs` runs `npm start` (`tsx src/index.ts`) as a single PM2-managed process —
 deliberately **one instance, not cluster mode**: long polling and the cron loop both assume
@@ -98,7 +102,7 @@ broadcast/cleanup batch independently.
 ```bash
 cd Cleanify
 git pull
-npm ci --omit=dev
+npm install --omit=dev
 npm run db:migrate        # no-op if there's nothing new to apply
 pm2 reload cleanify        # zero-downtime-ish restart; picks up the new code
 ```
