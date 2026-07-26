@@ -92,7 +92,7 @@ optional platform-specific packages that don't match the current OS/CPU (esbuild
 platform) instead of just skipping them, which is exactly the kind of thing `npm install` is more
 forgiving about.
 
-`ecosystem.config.cjs` runs `npm start` (`tsx src/index.ts`) as a single PM2-managed process —
+`ecosystem.config.cjs` runs `src/index.ts` via `tsx` as a single PM2-managed process —
 deliberately **one instance, not cluster mode**: long polling and the cron loop both assume
 they're the only thing running, since two instances would each poll Telegram and process every
 broadcast/cleanup batch independently.
@@ -104,8 +104,12 @@ cd Cleanify
 git pull
 npm install --omit=dev
 npm run db:migrate        # no-op if there's nothing new to apply
-pm2 reload cleanify        # zero-downtime-ish restart; picks up the new code
+pm2 startOrReload ecosystem.config.cjs
 ```
+
+Use `startOrReload`, not `restart`/`reload cleanify` — those reuse whatever `cwd`/script settings
+the process was _first_ registered with instead of re-reading `ecosystem.config.cjs`, so a fix to
+this file (or a bad first registration) can silently stick around across restarts.
 
 **Operating:**
 

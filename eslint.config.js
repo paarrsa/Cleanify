@@ -29,7 +29,7 @@ export default tseslint.config(
     // PM2's config format is CommonJS even though the rest of this repo is "type": "module".
     files: ['*.cjs'],
     languageOptions: {
-      globals: { module: 'writable', require: 'readonly' },
+      globals: { module: 'writable', require: 'readonly', __dirname: 'readonly' },
     },
   },
   prettierConfig,
