@@ -4,6 +4,13 @@
     "clearingOldMenu": "Cleanify has been rebuilt from the ground up! Clearing the old menu...",
     "prompt": "Please select a language:"
   },
+  "forceJoin": {
+    "prompt": "To use Cleanify, please join our channel {channel} first, then tap the button below.",
+    "joinButton": "📢 Join the channel",
+    "checkButton": "✅ I've joined",
+    "notJoinedYet": "You haven't joined the channel yet. Join it, then tap \"I've joined\" again.",
+    "thanks": "Thanks for joining!"
+  },
   "menu": {
     "delete": "Delete messages for me!",
     "help": "Help",
@@ -13,11 +20,11 @@
     "cancel": "Cancel"
   },
   "help": {
-    "caption": "This video shows you how to use the bot!"
+    "text": "How to use Cleanify:\n\n1. Add me as an admin of your channel, with permission to delete messages.\n2. Tap \"Delete messages for me!\" in the menu.\n3. Forward me the first message you want deleted from your channel.\n4. Forward me the last message you want deleted.\n5. Check the estimated count and confirm. I'll delete both messages and everything in between.\n\nOther things I can do:\n• My channels: see the channels you manage with me.\n• History: see your recent cleanups.\n• /autocleanup: automatically delete channel messages older than a number of days you choose (/autocleanup off to stop). This only works for messages posted after I became an admin.\n• /en or /fa: change the language."
   },
   "support": "Message @FormerlyGod for support.",
   "errors": {
-    "channelError": "The message you sent isn't forwarded from a channel. Please follow the help video :)",
+    "channelError": "The message you sent isn't forwarded from a channel. Check the Help section for how it works :)",
     "differentChannelError": "Those two messages are from different channels :/",
     "adminError": "First, make me an admin of the channel with permission to delete messages. Then try again!",
     "deniedError": "You're not an admin of that channel :/",

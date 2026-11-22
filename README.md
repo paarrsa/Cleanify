@@ -20,6 +20,9 @@ manually deleting hundreds of messages one at a time.
   from whenever Cleanify starts watching a channel (`/autocleanup`, `/autocleanup off`). Checked
   roughly once a minute (see [Background jobs](#background-jobs)), so a message is deleted within
   about a minute of crossing its configured age rather than sitting for up to an hour.
+- **Force join** — when `FORCE_JOIN_CHANNEL` is set, users must join that channel before they
+  can use the bot (users in `ADMIN_USER_IDS` are exempt). The bot must be an admin of the channel
+  to check membership; if it can't, users are let through rather than locked out.
 - **Admin broadcast** — `/broadcast`, restricted to `ADMIN_USER_IDS`, replacing the legacy bot's
   unauthenticated broadcast endpoint. Send any content (text/photo/video/document — sent as-is,
   formatting included), pick an audience (all users, by language, or channel admins only) and

@@ -19,7 +19,16 @@ const envSchema = z.object({
     (value) => (value === '' ? undefined : value),
     z.string().url().optional(),
   ),
-  HELP_VIDEO_FILE_ID: z.string().optional(),
+  /** Public channel users must join before they can use the bot, e.g. "@rawrealities". Leave
+   * blank to disable. The bot must be an admin of this channel to check membership. */
+  FORCE_JOIN_CHANNEL: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z
+      .string()
+      .regex(/^@?[A-Za-z0-9_]{5,32}$/, 'FORCE_JOIN_CHANNEL must be a public @username')
+      .transform((value) => (value.startsWith('@') ? value : `@${value}`))
+      .optional(),
+  ),
   /** Raw JSON of the bot's getMe() response. When set, skips grammY's automatic getMe() call on
    * startup — saves one network round-trip before the bot can start polling. Regenerate with:
    * curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getMe" | jq -c .result

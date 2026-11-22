@@ -12,6 +12,7 @@ import { createAutoCleanupFlow } from '@/bot/flows/autoCleanup.js';
 import { createBroadcastFlow, parseAudienceCallback } from '@/bot/flows/broadcast.js';
 import { createDeleteRangeFlow } from '@/bot/flows/deleteRange.js';
 import { mainMenuKeyboard } from '@/bot/keyboards/mainMenu.js';
+import { createForceJoinMiddleware } from '@/bot/middleware/forceJoin.js';
 import { createIdentifyUserMiddleware } from '@/bot/middleware/identifyUser.js';
 import { createSessionMiddleware } from '@/bot/middleware/session.js';
 import { getEnv } from '@/config/env.js';
@@ -31,6 +32,14 @@ export function createBot(db: Database): Bot<BotContext> {
 
   bot.use(createSessionMiddleware(db));
   bot.use(createIdentifyUserMiddleware(db));
+  if (env.FORCE_JOIN_CHANNEL) {
+    bot.use(
+      createForceJoinMiddleware({
+        channel: env.FORCE_JOIN_CHANNEL,
+        exemptUserIds: env.ADMIN_USER_IDS,
+      }),
+    );
+  }
 
   const language = createLanguageHandlers(db);
   const deleteRange = createDeleteRangeFlow(db);
