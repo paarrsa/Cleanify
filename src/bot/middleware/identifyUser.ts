@@ -14,11 +14,12 @@ import { DEFAULT_LOCALE, isSupportedLocale, t } from '@/i18n/index.js';
  */
 export function createIdentifyUserMiddleware(db: Database) {
   return async (ctx: BotContext, next: NextFunction) => {
-    // channel_post updates have `from` set to the posting admin when the channel signs messages,
-    // but there's no DM to reply into — ctx.reply() there sends into the channel itself, which
-    // rejects a ReplyKeyboardRemove/inline-keyboard-gated prompt outright. This flow only makes
-    // sense for someone actually conversing with the bot.
-    if (!ctx.from || ctx.channelPost) {
+    // Only private chats are a conversation with the user. Channel-side updates (signed
+    // channel_posts, my_chat_member when the bot is made a channel admin, ...) also carry `from`,
+    // but ctx.reply() there posts into the channel itself — which rejects the reply-keyboard
+    // prompt ("inline keyboard expected") — and would register channel admins as bot users.
+    if (!ctx.from || ctx.chat?.type !== 'private') {
+      ctx.locale = DEFAULT_LOCALE;
       return next();
     }
 

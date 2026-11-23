@@ -21,12 +21,22 @@ const envSchema = z.object({
   ),
   /** Public channel users must join before they can use the bot, e.g. "@rawrealities". Leave
    * blank to disable. The bot must be an admin of this channel to check membership. */
+  // Accepts "@name", "name", or a "https://t.me/name" link, tolerating stray whitespace/quotes.
   FORCE_JOIN_CHANNEL: z.preprocess(
-    (value) => (value === '' ? undefined : value),
+    (value) => {
+      if (typeof value !== 'string') return value;
+      const cleaned = value
+        .trim()
+        .replace(/^["']|["']$/g, '')
+        .replace(/^(?:https?:\/\/)?(?:www\.)?(?:t|telegram)\.me\//i, '')
+        .replace(/^@/, '')
+        .replace(/\/+$/, '');
+      return cleaned === '' ? undefined : cleaned;
+    },
     z
       .string()
-      .regex(/^@?[A-Za-z0-9_]{5,32}$/, 'FORCE_JOIN_CHANNEL must be a public @username')
-      .transform((value) => (value.startsWith('@') ? value : `@${value}`))
+      .regex(/^[A-Za-z0-9_]{5,32}$/, 'FORCE_JOIN_CHANNEL must be a public channel @username')
+      .transform((value) => `@${value}`)
       .optional(),
   ),
   /** Raw JSON of the bot's getMe() response. When set, skips grammY's automatic getMe() call on

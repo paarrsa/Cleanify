@@ -47,6 +47,13 @@ export function forceJoinKeyboard(locale: Locale, channel: string): InlineKeyboa
     .text(t(locale, 'forceJoin.checkButton'), FORCE_JOIN_CHECK_CALLBACK);
 }
 
+function isLanguageSelection(ctx: BotContext): boolean {
+  const text = ctx.message?.text;
+  return (
+    text === '/en' || text === '/fa' || (ctx.callbackQuery?.data?.startsWith('lang:') ?? false)
+  );
+}
+
 /** How long a confirmed membership is trusted before asking Telegram again. */
 const MEMBER_CACHE_TTL_MS = 5 * 60 * 1000;
 const MEMBER_CACHE_MAX_ENTRIES = 10_000;
@@ -82,6 +89,11 @@ export function createForceJoinMiddleware({ channel, exemptUserIds }: ForceJoinO
 
   return async (ctx: BotContext, next: NextFunction) => {
     if (!ctx.from || ctx.chat?.type !== 'private' || exemptUserIds.includes(ctx.from.id)) {
+      return next();
+    }
+    // identifyUser asks for a language before anything else, so blocking the answer would trap a
+    // new, not-yet-joined user in a language-prompt <-> join-prompt loop.
+    if (isLanguageSelection(ctx)) {
       return next();
     }
 
