@@ -21,24 +21,29 @@ const envSchema = z.object({
   ),
   /** Public channel users must join before they can use the bot, e.g. "@rawrealities". Leave
    * blank to disable. The bot must be an admin of this channel to check membership. */
-  // Accepts "@name", "name", or a "https://t.me/name" link, tolerating stray whitespace/quotes.
-  FORCE_JOIN_CHANNEL: z.preprocess(
-    (value) => {
-      if (typeof value !== 'string') return value;
-      const cleaned = value
-        .trim()
-        .replace(/^["']|["']$/g, '')
-        .replace(/^(?:https?:\/\/)?(?:www\.)?(?:t|telegram)\.me\//i, '')
-        .replace(/^@/, '')
-        .replace(/\/+$/, '');
-      return cleaned === '' ? undefined : cleaned;
-    },
-    z
-      .string()
-      .regex(/^[A-Za-z0-9_]{5,32}$/, 'FORCE_JOIN_CHANNEL must be a public channel @username')
-      .transform((value) => `@${value}`)
-      .optional(),
-  ),
+  // Accepts "@name", "name", or a "https://t.me/name" link, tolerating stray whitespace, quotes
+  // and invisible characters (e.g. the direction marks some keyboards insert). Force join is an
+  // optional extra, so an unusable value disables it with a loud warning instead of crashing the
+  // whole bot at startup.
+  FORCE_JOIN_CHANNEL: z.preprocess((value) => {
+    if (typeof value !== 'string') return undefined;
+    const cleaned = value
+      .normalize('NFKC')
+      .replace(/[\p{Cf}\s]/gu, '')
+      .replace(/^["']+|["']+$/g, '')
+      .replace(/^(?:https?:\/\/)?(?:www\.)?(?:t|telegram)\.me\//i, '')
+      .replace(/^@/, '')
+      .replace(/\/+$/, '');
+    if (cleaned === '') return undefined;
+    if (!/^[A-Za-z0-9_]{5,32}$/.test(cleaned)) {
+      console.error(
+        `FORCE_JOIN_CHANNEL=${JSON.stringify(value)} is not a public channel username ` +
+          '(expected e.g. @mychannel) — force join is DISABLED until it is fixed.',
+      );
+      return undefined;
+    }
+    return `@${cleaned}`;
+  }, z.string().optional()),
   /** Raw JSON of the bot's getMe() response. When set, skips grammY's automatic getMe() call on
    * startup — saves one network round-trip before the bot can start polling. Regenerate with:
    * curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getMe" | jq -c .result
