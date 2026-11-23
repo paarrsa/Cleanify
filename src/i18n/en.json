@@ -40,7 +40,9 @@
     "waiting": "Please wait a moment...",
     "cleaning": "Cleanify is deleting messages...",
     "cancelled": "Cancelled. Nothing was deleted.",
-    "done": "Done! I deleted {count} messages. Thanks for using Cleanify!"
+    "done": "Done! I deleted {count} messages. Thanks for using Cleanify!",
+    "failed": "Something went wrong while deleting, so I stopped. Make sure I'm still an admin of the channel with permission to delete messages, then try again.",
+    "failedPartway": "Something went wrong after I'd processed about {count} messages, so I stopped. Make sure I'm still an admin of the channel with permission to delete messages, then try again."
   },
   "history": {
     "title": "Your recent cleanups:",

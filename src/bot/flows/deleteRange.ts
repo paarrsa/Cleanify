@@ -22,7 +22,7 @@ import {
 import { createJob, updateJobStatus } from '@/db/repositories/jobs.js';
 import { t } from '@/i18n/index.js';
 import { logger } from '@/logging/logger.js';
-import { deleteMessageRange } from '@/telegram/deleteQueue.js';
+import { DeleteMessagesError, deleteMessageRange } from '@/telegram/deleteQueue.js';
 
 interface ChannelForwardOrigin {
   channelId: number;
@@ -91,13 +91,13 @@ export function createDeleteRangeFlow(db: Database) {
   ) {
     if (!ctx.from) return;
 
-    const access = await checkChannelAdmin(ctx.api, origin.channelId, ctx.from.id);
+    const access = await checkChannelAdmin(ctx.api, origin.channelId, ctx.from.id, ctx.me.id);
     if (!access.allowed) {
       ctx.session.deleteFlow = resetDeleteFlow();
       await ctx.reply(
         t(
           ctx.locale,
-          access.reason === 'bot_lacks_access' ? 'errors.adminError' : 'errors.deniedError',
+          access.reason === 'user_not_admin' ? 'errors.deniedError' : 'errors.adminError',
         ),
         { reply_markup: mainMenuKeyboard(ctx.locale) },
       );
@@ -227,15 +227,19 @@ export function createDeleteRangeFlow(db: Database) {
       });
     } catch (error) {
       logger.error(
-        { error, channelId, firstMessageId, lastMessageId },
+        { err: error, channelId, firstMessageId, lastMessageId },
         'Failed to execute delete range job',
       );
       if (jobId !== undefined) {
         await updateJobStatus(db, jobId, 'failed', new Date());
       }
-      await ctx.reply(t(ctx.locale, 'errors.invalid'), {
-        reply_markup: mainMenuKeyboard(ctx.locale),
-      });
+      const completedCount = error instanceof DeleteMessagesError ? error.completedCount : 0;
+      await ctx.reply(
+        completedCount > 0
+          ? t(ctx.locale, 'deleteFlow.failedPartway', { count: completedCount })
+          : t(ctx.locale, 'deleteFlow.failed'),
+        { reply_markup: mainMenuKeyboard(ctx.locale) },
+      );
     } finally {
       ctx.session.deleteFlow = resetDeleteFlow();
     }

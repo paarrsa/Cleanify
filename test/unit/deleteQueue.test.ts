@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   buildIdRange,
   chunk,
+  DeleteMessagesError,
   deleteMessageRange,
+  deleteMessagesByIds,
   withFloodWaitRetry,
 } from '@/telegram/deleteQueue.js';
 
@@ -81,5 +83,21 @@ describe('deleteMessageRange', () => {
       Array.from({ length: 100 }, (_, i) => i + 1),
     );
     expect(result).toEqual({ attemptedCount: 250, chunkCount: 3 });
+  });
+});
+
+describe('deleteMessagesByIds failure', () => {
+  it('reports how many ids were processed before a chunk failed', async () => {
+    const apiError = new Error("Bad Request: message can't be deleted");
+    const deleteMessages = vi
+      .fn()
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true)
+      .mockRejectedValueOnce(apiError);
+    const promise = deleteMessagesByIds({ deleteMessages }, 123, buildIdRange(1, 250), {
+      chunkSize: 100,
+    });
+    await expect(promise).rejects.toBeInstanceOf(DeleteMessagesError);
+    await expect(promise).rejects.toMatchObject({ completedCount: 200, cause: apiError });
   });
 });

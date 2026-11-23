@@ -56,6 +56,18 @@ export interface DeleteRangeResult {
   chunkCount: number;
 }
 
+/** Thrown when a chunk fails partway through; `completedCount` ids were already sent for
+ * deletion before it, so callers can tell the user how far it got. The API error is `cause`. */
+export class DeleteMessagesError extends Error {
+  constructor(
+    readonly completedCount: number,
+    options: { cause: unknown },
+  ) {
+    super(`Deleting messages failed after ${completedCount} were processed`, options);
+    this.name = 'DeleteMessagesError';
+  }
+}
+
 /**
  * Deletes an arbitrary (not necessarily contiguous) list of message ids from a chat, chunked to
  * Telegram's bulk-delete limit (100 ids per call), retrying any chunk that hits flood control.
@@ -67,8 +79,14 @@ export async function deleteMessagesByIds(
   { chunkSize = 100 }: DeleteRangeOptions = {},
 ): Promise<DeleteRangeResult> {
   const chunks = chunk(messageIds, chunkSize);
+  let completedCount = 0;
   for (const batch of chunks) {
-    await withFloodWaitRetry(() => api.deleteMessages(chatId, batch));
+    try {
+      await withFloodWaitRetry(() => api.deleteMessages(chatId, batch));
+    } catch (error) {
+      throw new DeleteMessagesError(completedCount, { cause: error });
+    }
+    completedCount += batch.length;
   }
   return { attemptedCount: messageIds.length, chunkCount: chunks.length };
 }
