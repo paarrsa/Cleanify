@@ -111,7 +111,9 @@ export function createBot(db: Database): Bot<BotContext> {
   bot.on('channel_post', async (ctx) => {
     const post = ctx.channelPost;
     const channel = await getChannelByTelegramId(db, post.chat.id);
-    if (!channel) return; // only track channels the bot already knows about via the delete flow
+    // Only auto-cleanup reads this log, so only channels with it turned on are worth tracking —
+    // logging every post of every known channel is what let message_log grow unbounded.
+    if (!channel?.autoCleanupEnabled) return;
     await recordMessageLogEntry(db, {
       channelId: channel.id,
       messageId: post.message_id,

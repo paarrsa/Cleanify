@@ -80,6 +80,6 @@
     "invalidDays": "Please send a whole number of days, greater than 0 (e.g. 30).",
     "enabled": "Auto-cleanup enabled: messages older than {days} days will be deleted automatically.",
     "disabled": "Auto-cleanup disabled for all your channels.",
-    "limitationNotice": "Note: auto-cleanup can only apply to messages posted after I was added as an admin — I have no way to see the age of messages posted before that."
+    "limitationNotice": "Note: auto-cleanup only applies to messages posted from now on — I have no way to see the age of messages posted before you turned it on."
   }
 }

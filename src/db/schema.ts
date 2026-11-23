@@ -43,8 +43,9 @@ export const channels = pgTable('channels', {
   telegramChatId: bigint('telegram_chat_id', { mode: 'number' }).notNull().unique(),
   title: text('title'),
   username: text('username'),
-  /** Auto-cleanup only ever applies going forward from whenever the bot started observing the
-   * channel via `channel_post` updates (see `message_log`) — never retroactively. */
+  /** Auto-cleanup only ever applies going forward: `channel_post` updates are logged to
+   * `message_log` only while this is on (and rows for channels with it off are pruned), so it
+   * covers messages posted after it was enabled — never retroactively. */
   autoCleanupEnabled: boolean('auto_cleanup_enabled').notNull().default(false),
   autoCleanupDays: integer('auto_cleanup_days'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

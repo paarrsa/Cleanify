@@ -5,6 +5,7 @@ import { getEnv } from '@/config/env.js';
 import { closeDb, getDb } from '@/db/client.js';
 import { processBroadcastBatch } from '@/jobs/processBroadcastBatch.js';
 import { runScheduledCleanup } from '@/jobs/runScheduledCleanup.js';
+import { pruneUnusedMessageLog } from '@/db/repositories/messageLog.js';
 import { logger } from '@/logging/logger.js';
 
 /** How often to drain queued broadcasts and sweep for auto-cleanup-eligible messages. A message
@@ -24,8 +25,13 @@ async function main() {
       return;
     }
     cronRunning = true;
-    void Promise.all([processBroadcastBatch(db, bot.api), runScheduledCleanup(db, bot.api)])
-      .then(([broadcastResult, cleanupResult]) => {
+    void Promise.all([
+      processBroadcastBatch(db, bot.api),
+      runScheduledCleanup(db, bot.api),
+      pruneUnusedMessageLog(db),
+    ])
+      .then(([broadcastResult, cleanupResult, prunedLogRows]) => {
+        if (prunedLogRows > 0) logger.info({ prunedLogRows }, 'Pruned unused message_log rows');
         logger.debug({ broadcastResult, cleanupResult }, 'Cron tick complete');
       })
       .catch((error: unknown) => {
